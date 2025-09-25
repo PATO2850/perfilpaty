@@ -294,3 +294,4 @@ window.addEventListener("error", function (e) {
 window.addEventListener("unhandledrejection", function (e) {
   console.error("Promesa rechazada:", e.reason);
 });
+
