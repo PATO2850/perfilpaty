@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ejercicio de Relajación y Mindfulness</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to right, #c2e9fb, #a1c4fd);
+      text-align: center;
+      padding: 30px;
+    }
+    h1 { color: #2e3a59; }
+    #webcam-container { margin: 20px auto; }
+    #mensaje {
+      font-size: 1.4em;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.7);
+      display: inline-block;
+    }
+    .animacion {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #6bcdfd;
+      margin: 20px auto;
+      animation: respirar 4s infinite ease-in-out;
+    }
+    @keyframes respirar {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); background: #82e0aa; }
+      100% { transform: scale(1); background: #6bcdfd; }
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 10px;
+      background: #2e3a59;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ejercicio de Relajación y Mindfulness</h1>
+  <p>Cierra los ojos y respira profundamente.<br>
+     El sistema detectará tu estado y te mostrará mensajes motivadores o tips de concentración.</p>
+  
+  <div id="webcam-container"></div>
+  <div id="mensaje">Esperando detección...</div>
+  <div id="animacion" class="animacion" style="display:none;"></div>
+
+  <!-- Botón para iniciar audio (por permisos del navegador) -->
+  <button onclick="iniciarAudio()">Activar Sonido</button>
+
+  <!-- Música relajante -->
+  <audio id="musica" loop>
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" type="audio/mpeg">
+    Tu navegador no soporta audio.
+  </audio>
+
+  <script>
+    const URL = "https://teachablemachine.withgoogle.com/models/94KbB26VQ/";
+    let model, webcam, maxPredictions;
+    let musica = document.getElementById("musica");
+
+    // Frases motivadoras y tips
+    const frasesMotivadoras = [
+      "🌿 Respira profundo... suelta la tensión.",
+      "🌸 Estás en calma, todo está bien.",
+      "🍃 Disfruta este momento de tranquilidad.",
+      "✨ Tu paz interior es tu fuerza."
+    ];
+    const tipsConcentracion = [
+      "🎯 Concéntrate en una sola tarea a la vez.",
+      "📵 Aleja distracciones digitales mientras trabajas.",
+      "🕐 Haz pausas cortas cada 45 minutos.",
+      "💧 Hidrátate para mantener tu enfoque."
+    ];
+
+    function fraseAleatoria(lista) {
+      return lista[Math.floor(Math.random() * lista.length)];
+    }
+
+    function iniciarAudio() {
+      musica.play();
+      musica.pause(); // arranca el permiso, pero la pausamos hasta cerrar ojos
+      alert("✅ Sonido activado, ahora el sistema podrá reproducir música cuando cierres los ojos.");
+    }
+
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      const flip = true;
+      webcam = new tmImage.Webcam(300, 300, flip);
+      
+      try {
+        await webcam.setup();
+        await webcam.play();
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        window.requestAnimationFrame(loop);
+      } catch (err) {
+        alert("⚠️ No se pudo acceder a la cámara. Usa HTTPS o localhost y revisa permisos.");
+        console.error(err);
+      }
+    }
+
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
+      let mejor = prediction.reduce((prev, current) =>
+        (prev.probability > current.probability) ? prev : current
+      );
+
+      let mensajeDiv = document.getElementById("mensaje");
+      let animacionDiv = document.getElementById("animacion");
+
+      if (mejor.className.toLowerCase().includes("cerrado")) {
+        animacionDiv.style.display = "block";
+        mensajeDiv.innerHTML = fraseAleatoria(frasesMotivadoras);
+        if (musica.paused) musica.play();
+      } else if (mejor.className.toLowerCase().includes("abierto")) {
+        animacionDiv.style.display = "none";
+        mensajeDiv.innerHTML = fraseAleatoria(tipsConcentracion);
+        if (!musica.paused) musica.pause();
+      } else {
+        mensajeDiv.innerHTML = "👀 Asegúrate de estar frente a la cámara...";
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
